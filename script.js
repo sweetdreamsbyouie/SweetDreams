@@ -5,13 +5,39 @@ function showPage(pageId) {
     document.getElementById(pageId).scrollTop = 0;
 }
 
-const orderItems = { brookie: 0, ube: 0 };
+const orderItems = { 
+  brookie: 0, 
+  ubeCoconut: 0,
+  ubeCheese: 0
+};
+
+
+function changeToppingQty(topping, change) {
+    const maxQty = orderItems.ube; // limit toppings to number of Ube cakes
+    const currentTotal = ubeToppings["Cheese"] + ubeToppings["Coconut Flakes"];
+
+    // Prevent exceeding Ube qty
+    if (change > 0 && currentTotal >= maxQty) return;
+
+    ubeToppings[topping] = Math.max(0, ubeToppings[topping] + change);
+    document.getElementById(`topping-${topping}`).textContent = ubeToppings[topping];
+}
 
 function changeQty(item, change) {
     orderItems[item] = Math.max(0, orderItems[item] + change);
     document.getElementById('qty-' + item).textContent = orderItems[item];
     const itemElement = document.querySelector('[data-item="' + item + '"]');
     if (orderItems[item] > 0) {
+        if (item === 'ube') {
+    const totalToppings = ubeToppings["Cheese"] + ubeToppings["Coconut Flakes"];
+    if (totalToppings > orderItems.ube) {
+        // If we reduced Ube qty, also reduce toppings automatically
+        ubeToppings["Cheese"] = 0;
+        ubeToppings["Coconut Flakes"] = 0;
+        document.getElementById('topping-Cheese').textContent = '0';
+        document.getElementById('topping-Coconut Flakes').textContent = '0';
+    }
+}
         itemElement.classList.add('selected');
     } else {
         itemElement.classList.remove('selected');
@@ -71,7 +97,7 @@ const scheduleConfig = {
             endTime: 5.5,
             duration: 30,
             area: 'Eau Claire',
-            fee: 7
+            fee: 6.50
         },
         sunday: {
             day: 0,
@@ -215,6 +241,13 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
         document.getElementById('orderError').style.display = 'block';
         return;
     }
+    if (orderItems.ube > 0) {
+    const totalToppings = ubeToppings["Cheese"] + ubeToppings["Coconut Flakes"];
+    if (totalToppings !== orderItems.ube) {
+        document.getElementById('toppingError').style.display = 'block';
+        return;
+    }
+}
     document.getElementById('orderError').style.display = 'none';
     if (!selectedTimeSlot) {
         document.getElementById('timeError').style.display = 'block';
@@ -230,13 +263,17 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
     }
     bookedSlots[selectedDate].push(selectedTimeSlot);
     
-    const subtotal = (orderItems.brookie * 2.99 + orderItems.ube * 5.50);
+    const subtotal = 
+        orderItems.brookie * 2.99 +
+        orderItems.ubeCoconut * 5.50 +
+        orderItems.ubeCheese * 5.50;
     const total = (subtotal + deliveryFee).toFixed(2);
     const subtotalFormatted = subtotal.toFixed(2);
     
     let itemList = '';
-    if (orderItems.brookie > 0) itemList += 'Brookie Monsters x' + orderItems.brookie + ', ';
-    if (orderItems.ube > 0) itemList += 'Ube Dream Tres Leches x' + orderItems.ube;
+        if (orderItems.brookie > 0) itemList += `Brookie Monsters x${orderItems.brookie}, `;
+        if (orderItems.ubeCoconut > 0) itemList += `Ube Dream Tres Leches (Coconut Flakes) x${orderItems.ubeCoconut}, `;
+        if (orderItems.ubeCheese > 0) itemList += `Ube Dream Tres Leches (Cheese) x${orderItems.ubeCheese}`;
     
     const orderData = {
         timestamp: new Date().toISOString(),
@@ -247,15 +284,40 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
         deliveryArea: deliveryArea || 'N/A',
         address: formData.get('address') || 'N/A',
         brookieQty: orderItems.brookie,
-        ubeQty: orderItems.ube,
+        ubeCoconutQty: orderItems.ubeCoconut,
+        ubeCheeseQty: orderItems.ubeCheese,
         items: itemList,
-        subtotal: subtotalFormatted,
+        subtotal: subtotal.toFixed(2),
         deliveryFee: deliveryFee.toFixed(2),
         total: total,
         date: selectedDate,
         time: selectedTimeSlot,
         specialRequests: formData.get('specialRequests') || 'None'
-    };
+        };
+
+
+    // ✅ Move topping summary logic **after** orderData is declared
+    let successMessage = 'Thank you for your order! 🎉\n\nOrder Summary:\n';
+    successMessage += 'Name: ' + orderData.fullName + '\n';
+    successMessage += 'Items: ' + itemList + '\n';
+    if (orderItems.ube > 0) {
+        successMessage += 'Toppings:\n';
+        if (ubeToppings["Cheese"] > 0) successMessage += `• Cheese x${ubeToppings["Cheese"]}\n`;
+        if (ubeToppings["Coconut Flakes"] > 0) successMessage += `• Coconut Flakes x${ubeToppings["Coconut Flakes"]}\n`;
+    }
+    successMessage += 'Subtotal: $' + subtotalFormatted + '\n';
+    if (deliveryFee > 0) {
+        successMessage += 'Delivery Fee (' + deliveryArea + '): $' + deliveryFee.toFixed(2) + '\n';
+    }
+    successMessage += 'Total: $' + total + '\n';
+    successMessage += 'Method: ' + orderData.deliveryMethod;
+    if (deliveryArea) {
+        successMessage += ' (' + deliveryArea + ' Area)';
+    }
+    successMessage += '\nDate: ' + selectedDate + '\n';
+    successMessage += 'Time: ' + selectedTimeSlot + '\n\n';
+    successMessage += 'Your order has been submitted! We will contact you shortly to confirm. ✨';
+
     
     const submitBtn = document.querySelector('.submit-btn');
     submitBtn.disabled = true;
@@ -325,7 +387,15 @@ function resetForm() {
     const submitBtn = document.querySelector('.submit-btn');
     submitBtn.disabled = false;
     submitBtn.textContent = 'Submit Order ✨';
-}
+    selectedUbeTopping = null;
+    document.querySelectorAll('#ubeToppings .topping-btn').forEach(btn => btn.classList.remove('selected'));
+    document.getElementById('toppingError').style.display = 'none';
+    ubeToppings["Cheese"] = 0;
+    ubeToppings["Coconut Flakes"] = 0;
+    document.getElementById('topping-Cheese').textContent = '0';
+    document.getElementById('topping-Coconut Flakes').textContent = '0';
+    document.getElementById('toppingError').style.display = 'none';
+    }
 
 window.addEventListener('load', () => {
   const intro = document.getElementById('intro');
