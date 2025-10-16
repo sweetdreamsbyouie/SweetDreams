@@ -375,9 +375,11 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
 function resetForm() {
     document.getElementById('orderForm').reset();
     orderItems.brookie = 0;
-    orderItems.ube = 0;
+    orderItems.ubeCoconut = 0;
+    orderItems.ubeCheese = 0;
     document.getElementById('qty-brookie').textContent = '0';
-    document.getElementById('qty-ube').textContent = '0';
+    document.getElementById('qty-ubeCoconut').textContent = '0';
+    document.getElementById('qty-ubeCheese').textContent = '0';
     document.querySelectorAll('.menu-select-item').forEach(item => item.classList.remove('selected'));
     document.getElementById('timeSlotGroup').style.display = 'none';
     addressGroup.style.display = 'none';
@@ -387,15 +389,7 @@ function resetForm() {
     const submitBtn = document.querySelector('.submit-btn');
     submitBtn.disabled = false;
     submitBtn.textContent = 'Submit Order ✨';
-    selectedUbeTopping = null;
-    document.querySelectorAll('#ubeToppings .topping-btn').forEach(btn => btn.classList.remove('selected'));
-    document.getElementById('toppingError').style.display = 'none';
-    ubeToppings["Cheese"] = 0;
-    ubeToppings["Coconut Flakes"] = 0;
-    document.getElementById('topping-Cheese').textContent = '0';
-    document.getElementById('topping-Coconut Flakes').textContent = '0';
-    document.getElementById('toppingError').style.display = 'none';
-    }
+}
 
 window.addEventListener('load', () => {
   const intro = document.getElementById('intro');
