@@ -104,102 +104,105 @@ function generateTimeSlots(startTime, endTime, durationMinutes) {
     return slots;
 }
 
-function loadTimeSlots() {
-    const dateInput = document.getElementById('date');
-    const selectedDate = dateInput.value;
-    const deliveryMethod = document.querySelector('input[name="deliveryMethod"]:checked');
-    
-    if (!selectedDate) {
-        document.getElementById('timeSlotGroup').style.display = 'none';
-        return;
+async function loadTimeSlots() {
+  const dateInput = document.getElementById('date');
+  const selectedDate = dateInput.value;
+  const deliveryMethod = document.querySelector('input[name="deliveryMethod"]:checked');
+  
+  if (!selectedDate) {
+    document.getElementById('timeSlotGroup').style.display = 'none';
+    return;
+  }
+
+  if (!deliveryMethod) {
+    alert('Please select a delivery method first (Pick-up or Delivery)');
+    return;
+  }
+
+  const date = new Date(selectedDate + 'T00:00:00');
+  const dayOfWeek = date.getDay();
+  const selectorDiv = document.getElementById('timeSlotSelector');
+  selectorDiv.innerHTML = '';
+
+  // 🆕 FETCH globally booked slots from Google Sheets
+    let globalBooked = {};
+    try {
+    const res = await fetch(`${SCRIPT_URL}?fetch=booked`);
+    globalBooked = await res.json();
+    } catch (error) {
+    console.error('Error fetching booked slots:', error);
     }
-    
-    if (!deliveryMethod) {
-        document.getElementById('timeSlotGroup').style.display = 'none';
-        alert('Please select a delivery method first (Pick-up or Delivery)');
-        return;
+
+  const bookedTimes = globalBooked[selectedDate] || [];
+
+  // Existing logic for generating slots
+  selectedTimeSlot = null;
+  deliveryFee = 0;
+  deliveryArea = '';
+
+  let availableSlots = [];
+  let dayLabel = '';
+
+  if (deliveryMethod.value === 'pickup') {
+    if (scheduleConfig.pickup.days.includes(dayOfWeek)) {
+      availableSlots = generateTimeSlots(
+        scheduleConfig.pickup.startTime,
+        scheduleConfig.pickup.endTime,
+        scheduleConfig.pickup.duration
+      );
+      dayLabel = scheduleConfig.pickup.label;
+    } else {
+      selectorDiv.innerHTML = '<p style="color: #ff6b6b; text-align: center;">Pick-up only available Tuesday & Thursday 2:30–4:30 PM.</p>';
+      document.getElementById('timeSlotGroup').style.display = 'block';
+      return;
     }
-    
-    const date = new Date(selectedDate + 'T00:00:00');
-    const dayOfWeek = date.getDay();
-    
-    const selectorDiv = document.getElementById('timeSlotSelector');
-    selectorDiv.innerHTML = '';
-    
-    const existingInfo = selectorDiv.parentElement.querySelector('.schedule-info');
-    if (existingInfo) {
-        existingInfo.remove();
+  } else if (deliveryMethod.value === 'delivery') {
+    if (dayOfWeek === scheduleConfig.delivery.saturday.day) {
+      availableSlots = generateTimeSlots(
+        scheduleConfig.delivery.saturday.startTime,
+        scheduleConfig.delivery.saturday.endTime,
+        scheduleConfig.delivery.saturday.duration
+      );
+      deliveryArea = scheduleConfig.delivery.saturday.area;
+      deliveryFee = scheduleConfig.delivery.saturday.fee;
+      dayLabel = 'Delivery - ' + deliveryArea + ' (+$' + deliveryFee + ')';
+    } else if (dayOfWeek === scheduleConfig.delivery.sunday.day) {
+      availableSlots = generateTimeSlots(
+        scheduleConfig.delivery.sunday.startTime,
+        scheduleConfig.delivery.sunday.endTime,
+        scheduleConfig.delivery.sunday.duration
+      );
+      deliveryArea = scheduleConfig.delivery.sunday.area;
+      deliveryFee = scheduleConfig.delivery.sunday.fee;
+      dayLabel = 'Delivery - ' + deliveryArea + ' (+$' + deliveryFee + ')';
+    } else {
+      selectorDiv.innerHTML = '<p style="color: #ff6b6b; text-align: center;">Delivery only Saturday (Eau Claire) or Sunday (Mondovi).</p>';
+      document.getElementById('timeSlotGroup').style.display = 'block';
+      return;
     }
-    
-    selectedTimeSlot = null;
-    deliveryFee = 0;
-    deliveryArea = '';
-    
-    let availableSlots = [];
-    let dayLabel = '';
-    
-    if (deliveryMethod.value === 'pickup') {
-        if (scheduleConfig.pickup.days.includes(dayOfWeek)) {
-            availableSlots = generateTimeSlots(
-                scheduleConfig.pickup.startTime,
-                scheduleConfig.pickup.endTime,
-                scheduleConfig.pickup.duration
-            );
-            dayLabel = scheduleConfig.pickup.label;
-        } else {
-            document.getElementById('timeSlotGroup').style.display = 'block';
-            selectorDiv.innerHTML = '<p style="color: #ff6b6b; padding: 15px; text-align: center;">Pick-up is only available on Tuesdays and Thursdays (2:30 PM - 4:30 PM). Please select a different date.</p>';
-            return;
-        }
-    } else if (deliveryMethod.value === 'delivery') {
-        if (dayOfWeek === scheduleConfig.delivery.saturday.day) {
-            availableSlots = generateTimeSlots(
-                scheduleConfig.delivery.saturday.startTime,
-                scheduleConfig.delivery.saturday.endTime,
-                scheduleConfig.delivery.saturday.duration
-            );
-            deliveryArea = scheduleConfig.delivery.saturday.area;
-            deliveryFee = scheduleConfig.delivery.saturday.fee;
-            dayLabel = 'Delivery - ' + deliveryArea + ' Area (+$' + deliveryFee + ')';
-        } else if (dayOfWeek === scheduleConfig.delivery.sunday.day) {
-            availableSlots = generateTimeSlots(
-                scheduleConfig.delivery.sunday.startTime,
-                scheduleConfig.delivery.sunday.endTime,
-                scheduleConfig.delivery.sunday.duration
-            );
-            deliveryArea = scheduleConfig.delivery.sunday.area;
-            deliveryFee = scheduleConfig.delivery.sunday.fee;
-            dayLabel = 'Delivery - ' + deliveryArea + ' Area (+$' + deliveryFee + ')';
-        } else {
-            document.getElementById('timeSlotGroup').style.display = 'block';
-            selectorDiv.innerHTML = '<p style="color: #ff6b6b; padding: 15px; text-align: center;">Delivery is only available on:<br>• Saturday (Eau Claire area) 2:30 PM - 5:00 PM<br>• Sunday (Mondovi area) 2:30 PM - 4:30 PM<br>Please select a different date.</p>';
-            return;
-        }
+  }
+
+  // Render slots
+  document.getElementById('timeSlotGroup').style.display = 'block';
+  const infoDiv = document.createElement('div');
+  infoDiv.textContent = dayLabel;
+  infoDiv.style.cssText = 'background:#e8f5e9;padding:10px;border-radius:8px;text-align:center;color:#2e7d32;font-weight:bold;';
+  selectorDiv.parentElement.insertBefore(infoDiv, selectorDiv);
+
+  availableSlots.forEach(time => {
+    const slotDiv = document.createElement('div');
+    slotDiv.className = 'time-slot';
+    slotDiv.textContent = time;
+
+    if (bookedTimes.includes(time)) {
+      slotDiv.classList.add('taken');
+      slotDiv.title = 'Already booked';
+    } else {
+      slotDiv.onclick = () => selectTimeSlot(time, slotDiv, selectedDate);
     }
-    
-    if (availableSlots.length > 0) {
-        document.getElementById('timeSlotGroup').style.display = 'block';
-        
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'schedule-info';
-        infoDiv.style.cssText = 'background: #e8f5e9; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; color: #2e7d32; font-weight: bold;';
-        infoDiv.textContent = dayLabel;
-        selectorDiv.parentElement.insertBefore(infoDiv, selectorDiv);
-        
-        const bookedTimes = bookedSlots[selectedDate] || [];
-        availableSlots.forEach(time => {
-            const slotDiv = document.createElement('div');
-            slotDiv.className = 'time-slot';
-            slotDiv.textContent = time;
-            if (bookedTimes.includes(time)) {
-                slotDiv.classList.add('taken');
-                slotDiv.title = 'This time slot is already booked';
-            } else {
-                slotDiv.onclick = () => selectTimeSlot(time, slotDiv, selectedDate);
-            }
-            selectorDiv.appendChild(slotDiv);
-        });
-    }
+
+    selectorDiv.appendChild(slotDiv);
+  });
 }
 
 function selectTimeSlot(time, element, date) {
@@ -209,7 +212,7 @@ function selectTimeSlot(time, element, date) {
     document.getElementById('timeError').style.display = 'none';
 }
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKSjTlLvY0oZp9RhqwLa8W6c-YRN5Ql1M-UUPlMYEf1pAIn7UlgqntMfSxdEJQhfEFdQ/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyAjfm0lTJmal19YaB-PmEA97-D1g7rI6YTQarHUFrt_35LaJnITXDfywsBrXTayk_Y/exec';
 
 function showLoadingVideo() {
     const loadingOverlay = document.createElement('div');
@@ -742,7 +745,6 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
     if (!bookedSlots[selectedDate]) {
         bookedSlots[selectedDate] = [];
     }
-    bookedSlots[selectedDate].push(selectedTimeSlot);
 
     // Show confirmation receipt
     showConfirmationReceipt(orderData, itemList, subtotalFormatted, total, selectedDate);
