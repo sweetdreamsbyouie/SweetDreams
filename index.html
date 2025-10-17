@@ -35,7 +35,7 @@
         <button class="back-btn" onclick="showPage('home-page')">← Back</button>
         <div class="container">
             <section>
-                <div class="about-image">🧁</div>
+                <div class="about-image"></div>
                 <div class="about-content">
                     <h2>Hi there! I'm Ouie, the heart behind Sweet Dreams!</h2>
                     <p>Ever since I was young, I've had a big love for baking—mixing batter, sneaking tastes of frosting, and dreaming of having my own little bakery one day. But as I grew older, I slowly lost touch with that passion. For a while, I forgot that my dream was to become a baker.</p>
@@ -108,7 +108,7 @@
                 <p style="text-align: center; color: #87ceeb; margin-bottom: 30px;">Choose whether you'd like to pick up your treats or have them delivered right to your door! ◇₊.</p>
                 <div class="order-form">
                     <form id="orderForm">
-                        <div class="form-note1">
+                        <div class="form-note">
                             <strong>📝 Note:</strong> Please fill out all required fields. We'll confirm your order shortly!
                         </div>
                         <div class="form-group">
@@ -116,7 +116,7 @@
                             <div class="radio-group">
                                 <div class="radio-option">
                                     <input type="radio" id="pickup" name="deliveryMethod" value="pickup" required>
-                                    <label for="pickup" style="margin: 0; font-weight: normal;">I'll Pick It Up 🖤</label>
+                                    <label for="pickup" style="margin: 0; font-weight: normal;">I'll Pick It Up ❤︎</label>
                                 </div>
                                 <div class="radio-option">
                                     <input type="radio" id="delivery" name="deliveryMethod" value="delivery" required>
@@ -124,7 +124,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="form-note2">
+                        <div class="form-note">
                             <strong>📝 Note: <italic>Eau Claire deliveries</italic></strong> are available on <strong><underlined>Saturdays only</underlined></strong>. <strong><italic>Mondovi deliveries</italic></strong> are available on <strong><underlined>Sundays only</underlined></strong>. Thank you! ˶ᵔ ᵕ ᵔ˶
                         </div>
                         <div class="form-group">
@@ -142,6 +142,22 @@
                         <div class="form-group" id="addressGroup" style="display: none;">
                             <label for="address">Delivery Address *</label>
                             <textarea id="address" name="address" placeholder="Enter your complete delivery address"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>How would you like to pay? *</label>
+                            <div class="radio-group">
+                                <div class="radio-option">
+                                <input type="radio" id="paypal" name="paymentMethod" value="PayPal" required>
+                                <label for="paypal" style="margin: 0; font-weight: normal;">PayPal</label>
+                                </div>
+                                <div class="radio-option">
+                                <input type="radio" id="venmo" name="paymentMethod" value="Venmo" required>
+                                <label for="venmo" style="margin: 0; font-weight: normal;">Venmo</label>
+                                </div>
+                            </div>
+                            <div class="form-note" style="margin-top: 10px;">
+                                <strong>📝 Note:</strong> We’re not accepting cash at the moment. ˊᴖˋ But hopefully we’ll have it as an option very soon ♡
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Select Your Items *</label>
