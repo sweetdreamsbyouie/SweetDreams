@@ -212,7 +212,7 @@ function selectTimeSlot(time, element, date) {
     document.getElementById('timeError').style.display = 'none';
 }
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiovwcK1rzunljkbsjDAvXual3kr_40s_3vaQou5UOiKpvKchqnEGLhqgE6pZlsAm6JA/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzNbtJ8qd5qjwIXWG1qTrilwcXi-zCWKvGP0MaMqfFciGCXhYrCQlbf-77l87gh7yhaDw/exec';
 
 function showLoadingVideo() {
     const loadingOverlay = document.createElement('div');
@@ -572,13 +572,16 @@ function showConfirmationReceipt(orderData, itemList, subtotalFormatted, total, 
 async function submitOrderToGoogle(orderData, itemList, subtotalFormatted, total, selectedDate, loadingOverlay) {
     try {
         const response = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: {
-                'Content-Type': 'text/plain',
-            },
-            body: JSON.stringify(orderData)
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderData)
         });
+
+        const result = await response.json();
+        console.log(result);
+        if (result.status !== 'success') throw new Error(result.message || 'Failed');
 
         // Hide loading animation but keep overlay
         const planet = loadingOverlay.querySelector('.planet-loader');
