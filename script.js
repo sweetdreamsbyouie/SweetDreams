@@ -212,7 +212,7 @@ function selectTimeSlot(time, element, date) {
     document.getElementById('timeError').style.display = 'none';
 }
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyAjfm0lTJmal19YaB-PmEA97-D1g7rI6YTQarHUFrt_35LaJnITXDfywsBrXTayk_Y/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwiovwcK1rzunljkbsjDAvXual3kr_40s_3vaQou5UOiKpvKchqnEGLhqgE6pZlsAm6JA/exec';
 
 function showLoadingVideo() {
     const loadingOverlay = document.createElement('div');
