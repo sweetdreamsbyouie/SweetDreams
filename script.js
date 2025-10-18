@@ -59,19 +59,32 @@ let bookedSlots = {};
 let selectedTimeSlot = null;
 let deliveryFee = 0;
 let deliveryArea = '';
+let isFetchingSlots = false;
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKSjTlLvY0oZp9RhqwLa8W6c-YRN5Ql1M-UUPlMYEf1pAIn7UlgqntMfSxdEJQhfEFdQ/exec';
 
-// Fetch booked slots from Google Sheets when page loads
+// Fetch booked slots from Google Sheets
 async function fetchBookedSlots() {
+    if (isFetchingSlots) return; // Prevent multiple simultaneous fetches
+    
+    isFetchingSlots = true;
     try {
-        const response = await fetch(SCRIPT_URL + '?fetch=booked');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(SCRIPT_URL + '?fetch=booked', {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
         const data = await response.json();
         bookedSlots = data;
         console.log('Loaded booked slots:', bookedSlots);
     } catch (error) {
         console.error('Error fetching booked slots:', error);
-        bookedSlots = {};
+        // Keep existing bookedSlots if fetch fails
+    } finally {
+        isFetchingSlots = false;
     }
 }
 
@@ -135,8 +148,12 @@ function loadTimeSlots() {
         return;
     }
     
-    // Re-fetch booked slots to get latest data
+    // Render immediately with cached data
+    renderTimeSlots(selectedDate, deliveryMethod);
+    
+    // Refresh in background (optional - fetch updated data)
     fetchBookedSlots().then(() => {
+        // Re-render if we got new data
         renderTimeSlots(selectedDate, deliveryMethod);
     });
 }
@@ -638,6 +655,8 @@ async function submitOrderToGoogle(orderData, itemList, subtotalFormatted, total
         closeBtn.onclick = () => {
             loadingOverlay.remove();
             resetForm();
+            // Refresh booked slots after successful order
+            fetchBookedSlots();
             showPage('home-page');
         };
 
@@ -730,7 +749,13 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
         specialRequests: formData.get('specialRequests') || 'None'
     };
 
-    // Show confirmation receipt (booking will be saved to Google Sheets when submitted)
+    // Optimistically add to local cache (will be verified by server)
+    if (!bookedSlots[selectedDate]) {
+        bookedSlots[selectedDate] = [];
+    }
+    bookedSlots[selectedDate].push(selectedTimeSlot);
+
+    // Show confirmation receipt
     showConfirmationReceipt(orderData, itemList, subtotalFormatted, total, selectedDate);
 });
 
