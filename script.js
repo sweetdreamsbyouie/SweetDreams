@@ -55,38 +55,10 @@ deliveryRadio.addEventListener('change', function() {
     deliveryArea = '';
 });
 
-let bookedSlots = {};
+const bookedSlots = {};
 let selectedTimeSlot = null;
 let deliveryFee = 0;
 let deliveryArea = '';
-let isFetchingSlots = false;
-
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKSjTlLvY0oZp9RhqwLa8W6c-YRN5Ql1M-UUPlMYEf1pAIn7UlgqntMfSxdEJQhfEFdQ/exec';
-
-// Fetch booked slots from Google Sheets
-async function fetchBookedSlots() {
-    if (isFetchingSlots) return; // Prevent multiple simultaneous fetches
-    
-    isFetchingSlots = true;
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-        
-        const response = await fetch(SCRIPT_URL + '?fetch=booked', {
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        
-        const data = await response.json();
-        bookedSlots = data;
-        console.log('Loaded booked slots:', bookedSlots);
-    } catch (error) {
-        console.error('Error fetching booked slots:', error);
-        // Keep existing bookedSlots if fetch fails
-    } finally {
-        isFetchingSlots = false;
-    }
-}
 
 const scheduleConfig = {
     pickup: {
@@ -148,17 +120,6 @@ function loadTimeSlots() {
         return;
     }
     
-    // Render immediately with cached data
-    renderTimeSlots(selectedDate, deliveryMethod);
-    
-    // Refresh in background (optional - fetch updated data)
-    fetchBookedSlots().then(() => {
-        // Re-render if we got new data
-        renderTimeSlots(selectedDate, deliveryMethod);
-    });
-}
-
-function renderTimeSlots(selectedDate, deliveryMethod) {
     const date = new Date(selectedDate + 'T00:00:00');
     const dayOfWeek = date.getDay();
     
@@ -247,6 +208,8 @@ function selectTimeSlot(time, element, date) {
     selectedTimeSlot = time;
     document.getElementById('timeError').style.display = 'none';
 }
+
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKSjTlLvY0oZp9RhqwLa8W6c-YRN5Ql1M-UUPlMYEf1pAIn7UlgqntMfSxdEJQhfEFdQ/exec';
 
 function showLoadingVideo() {
     const loadingOverlay = document.createElement('div');
@@ -390,32 +353,52 @@ function showLoadingVideo() {
     svg.appendChild(sparklesGroup);
 
     loadingOverlay.appendChild(planet);
+
+    const loadingText = document.createElement('p');
+    loadingText.textContent = 'dreaming...';
+    loadingText.style.cssText = `
+        font-family: 'Georgia', serif;
+        font-size: 1.2em;
+        color: #fff7d1;
+        text-transform: lowercase;
+        letter-spacing: 2px;
+        margin-top: 20px;
+        text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        animation: loadingText 1.5s ease-in-out infinite;
+    `;
+    loadingOverlay.appendChild(loadingText);
+
     loadingOverlay.appendChild(svg);
     document.body.appendChild(loadingOverlay);
 
     // Add animations to stylesheet if not already present
     if (!document.getElementById('loaderAnimations')) {
-        const style = document.createElement('style');
-        style.id = 'loaderAnimations';
-        style.textContent = `
-            @keyframes rings1 {
-                0% { transform: rotateX(65deg) rotateZ(0deg) scale(1.75); }
-                100% { transform: rotateX(65deg) rotateZ(360deg) scale(1.75); }
-            }
-            @keyframes rings2 {
-                0% { transform: rotateX(65deg) rotateZ(0deg) scale(1.7); }
-                100% { transform: rotateX(65deg) rotateZ(360deg) scale(1.7); }
-            }
-            @keyframes sparkle {
-                0% { transform: scale(0); }
-                50% { transform: scale(0); }
-                70% { transform: scale(-1, 0); }
-                80% { transform: scale(1); }
-                100% { transform: scale(0); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
+    const style = document.createElement('style');
+    style.id = 'loaderAnimations';
+    style.textContent = `
+        @keyframes rings1 {
+            0% { transform: rotateX(65deg) rotateZ(0deg) scale(1.75); }
+            100% { transform: rotateX(65deg) rotateZ(360deg) scale(1.75); }
+        }
+        @keyframes rings2 {
+            0% { transform: rotateX(65deg) rotateZ(0deg) scale(1.7); }
+            100% { transform: rotateX(65deg) rotateZ(360deg) scale(1.7); }
+        }
+        @keyframes sparkle {
+            0% { transform: scale(0); }
+            50% { transform: scale(0); }
+            70% { transform: scale(-1, 0); }
+            80% { transform: scale(1); }
+            100% { transform: scale(0); }
+        }
+        @keyframes loadingText {
+            0%, 100% { opacity: 0.2; letter-spacing: 1px; }
+            50% { opacity: 1; letter-spacing: 4px; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 
     return loadingOverlay;
 }
@@ -423,7 +406,15 @@ function showLoadingVideo() {
 function hideLoadingVideo() {
     const loadingOverlay = document.getElementById('loadingOverlay');
     if (loadingOverlay) {
-        loadingOverlay.remove();
+        // Smooth fade out before removal
+        loadingOverlay.style.transition = 'opacity 0.6s ease';
+        loadingOverlay.style.opacity = '0';
+
+        setTimeout(() => {
+            const loadingText = loadingOverlay.querySelector('p');
+            if (loadingText) loadingText.remove();
+            loadingOverlay.remove();
+        }, 600); // match fade duration
     }
 }
 
@@ -593,8 +584,10 @@ async function submitOrderToGoogle(orderData, itemList, subtotalFormatted, total
         // Hide loading animation but keep overlay
         const planet = loadingOverlay.querySelector('.planet-loader');
         const svg = loadingOverlay.querySelector('svg');
+        const loadingText = loadingOverlay.querySelector('p');
         if (planet) planet.style.display = 'none';
         if (svg) svg.style.display = 'none';
+        if (loadingText) loadingText.style.display = 'none';
 
         // Create success receipt directly in the loading overlay
         const successContent = document.createElement('div');
@@ -619,7 +612,7 @@ async function submitOrderToGoogle(orderData, itemList, subtotalFormatted, total
                     
                     <p style="margin-bottom: 15px;">Once payment is received, we'll bake your goodies fresh with love. (If not, we'll have to cancel—and we'd be so sad to do that ˙ᵕ˙)</p>
                     
-                    <p style="color: #6b4e71; font-weight: bold; margin-top: 20px;">Thank you so much for your kind understanding! ᶻ 𝗓 𐰁</p>
+                    <p style="color: #6b4e71; font-weight: bold; margin-top: 20px;">Thank you so much for your kind understanding! ᶻ 𝗓 𝐰</p>
                 </div>
             </div>
 
@@ -655,8 +648,6 @@ async function submitOrderToGoogle(orderData, itemList, subtotalFormatted, total
         closeBtn.onclick = () => {
             loadingOverlay.remove();
             resetForm();
-            // Refresh booked slots after successful order
-            fetchBookedSlots();
             showPage('home-page');
         };
 
@@ -749,7 +740,7 @@ document.getElementById('orderForm').addEventListener('submit', async function(e
         specialRequests: formData.get('specialRequests') || 'None'
     };
 
-    // Optimistically add to local cache (will be verified by server)
+    // Book the time slot before showing receipt
     if (!bookedSlots[selectedDate]) {
         bookedSlots[selectedDate] = [];
     }
@@ -782,8 +773,39 @@ window.addEventListener('load', () => {
   const intro = document.getElementById('intro');
   const introVideo = document.getElementById('introVideo');
 
-  // Fetch booked slots when page loads
-  fetchBookedSlots();
+  introVideo.addEventListener('ended', () => {
+    intro.classList.add('slide-up');
+    setTimeout(() => {
+      intro.style.display = 'none';
+      document.getElementById('home-page').classList.add('active');
+    }, 1500);
+  });
+});
+
+function setDateRestrictions() {
+    const dateInput = document.getElementById('date');
+    const today = new Date();
+    
+    // Set minimum date to tomorrow
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const minDate = tomorrow.toISOString().split('T')[0];
+    
+    // Set maximum date to 3 months from today
+    const maxDate = new Date(today);
+    maxDate.setMonth(maxDate.getMonth() + 3);
+    const maxDateStr = maxDate.toISOString().split('T')[0];
+    
+    dateInput.setAttribute('min', minDate);
+    dateInput.setAttribute('max', maxDateStr);
+}
+
+window.addEventListener('load', () => {
+  const intro = document.getElementById('intro');
+  const introVideo = document.getElementById('introVideo');
+
+  // Set date restrictions
+  setDateRestrictions();
 
   introVideo.addEventListener('ended', () => {
     intro.classList.add('slide-up');
